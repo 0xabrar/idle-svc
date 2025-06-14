@@ -1,6 +1,5 @@
 # idle-svc
 
-[![Go Reference](https://pkg.go.dev/badge/github.com/0xabrar/idle-svc.svg)](https://pkg.go.dev/github.com/0xabrar/idle-svc)
 [![License](https://img.shields.io/github/license/0xabrar/idle-svc.svg)](LICENSE)
 
 **idle-svc** is a tiny command-line tool that scans your Kubernetes cluster and lists every Service whose EndpointSlice or legacy Endpoints object contains **zero _ready_ addresses**.
@@ -22,12 +21,26 @@ These "idle" (or "orphan") Services still hold a ClusterIP and DNS record even t
 
 Prerequisites: **Go 1.22** or newer must be installed and on your `PATH`.
 
+- Clone this repository:
+
 ```bash
-# install the latest idle-svc binary
-$ go install github.com/0xabrar/idle-svc@latest
+git clone https://github.com/0xabrar/idle-svc.git
+cd idle-svc
 ```
 
-The binary is placed in `$HOME/go/bin`.  Make sure that directory is on your `PATH` so you can invoke `idle-svc` directly.
+- Build the binary locally:
+
+```bash
+make build   # produces ./idle-svc
+```
+
+- Optionally install it into your Go bin directory:
+
+```bash
+make install # copies the binary to $(go env GOBIN)
+```
+
+Ensure that `$(go env GOBIN)` (typically `$HOME/go/bin`) is on your `PATH` so you can invoke `idle-svc` from anywhere.
 
 ---
 
@@ -72,10 +85,3 @@ kubectl scale deployment nginx-deployment --replicas 0
 # run idle-svc – the orphaned Service should appear in the output
 idle-svc -A
 ```
-
----
-
-## Next steps
-
-- Add `idle-svc -A --exit-code` to your CI pipeline to block merges that introduce new idle Services.
-- Package the binary as a [kubectl-krew](https://krew.sigs.k8s.io/) plug-in, or wrap it in a Helm `CronJob` for scheduled cluster scans. 
