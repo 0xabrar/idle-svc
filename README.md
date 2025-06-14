@@ -1,6 +1,6 @@
 # idle-svc
 
-[![License](https://img.shields.io/github/license/0xabrar/idle-svc.svg)](LICENSE)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
 **idle-svc** is a tiny command-line tool that scans your Kubernetes cluster and lists every Service whose EndpointSlice or legacy Endpoints object contains **zero _ready_ addresses**.
 
@@ -85,3 +85,9 @@ kubectl scale deployment nginx-deployment --replicas 0
 # run idle-svc – the orphaned Service should appear in the output
 idle-svc -A
 ```
+
+---
+
+## License
+
+Licensed under the [Apache License 2.0](LICENSE).
