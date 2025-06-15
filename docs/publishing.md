@@ -1,14 +1,13 @@
 # Publishing idle-svc
 
-This guide walks **maintainers** through releasing a new version of `idle-svc`, pushing the container image to a registry, and distributing the Helm chart.  Nothing here is required for end-users—keep it out of the README.
+This guide walks **maintainers** through releasing a new version of `idle-svc`, pushing the container image to a registry.  Nothing here is required for end-users—keep it out of the README.
 
 ---
 
 ## 1. Version bump
 
 1. Decide the semantic version you're releasing (e.g. `v0.2.0`).  
-2. Update `chart/idle-svc/Chart.yaml` `version` **and** `appVersion`.  
-3. Commit with message `release: v0.2.0`.
+2. Commit with message `release: v0.2.0`.
 
 ```bash
 git commit -am "release: v0.2.0"
@@ -38,35 +37,6 @@ docker buildx build --platform linux/amd64,linux/arm64 \
 
 ---
 
-## 3. Package the Helm chart
-
-The chart is located at `chart/idle-svc/`.
-
-```bash
-helm lint chart/idle-svc
-helm package chart/idle-svc -d dist
-```
-
-This produces `dist/idle-svc-$TAG.tgz`.
-
-### Option A – GitHub Pages index (classic repo)
-
-```bash
-# clone/pull the gh-pages branch into ./charts-site (or another dir)
-mkdir -p charts-site && cp dist/idle-svc-$TAG.tgz charts-site/
-cd charts-site
-helm repo index . --url https://0xabrar.github.io/idle-svc-charts
-# commit & push to gh-pages
-```
-
-End-users then:
-```bash
-helm repo add idle-svc https://0xabrar.github.io/idle-svc-charts
-helm install idle-svc idle-svc/idle-svc --version $TAG
-```
-
----
-
 ## 4. Tag & release the source repository
 
 Tag the commit and push:
@@ -78,7 +48,6 @@ git push origin $TAG
 If you use **Goreleaser** or a GitHub Actions workflow, configure it to:
 1. Build & attach binaries (`idle-svc_$(GOOS)_$(GOARCH)`).
 2. Push the Docker image (step 2). 
-3. Push the Helm chart (step 3).
 
 A minimal `.github/workflows/release.yml` skeleton is included below; tailor as you wish.
 
@@ -105,25 +74,59 @@ jobs:
             -t ghcr.io/0xabrar/idle-svc:$TAG \
             -t ghcr.io/0xabrar/idle-svc:latest \
             --push .
+```
 
-  helm-chart:
-    runs-on: ubuntu-latest
-    needs: build-image
-    steps:
-      - uses: actions/checkout@v4
-      - run: |
-          TAG=${GITHUB_REF##*/}
-          helm package chart/idle-svc -d dist --version $TAG --app-version $TAG
-          git clone --depth 1 --branch gh-pages https://github.com/0xabrar/idle-svc.git gh-pages
-          mv dist/idle-svc-$TAG.tgz gh-pages/
-          cd gh-pages
-          helm repo index . --url https://0xabrar.github.io/idle-svc-charts --merge index.yaml
-          git config user.email "actions@github.com" && git config user.name "github-actions"
-          git add . && git commit -m "Add chart $TAG" && git push origin gh-pages
+### Manual image push (no CI)
+
+```bash
+# log in once per shell
+echo "$CR_PAT" | docker login ghcr.io -u 0xabrar --password-stdin
+
+# push specific version
+docker buildx build --platform linux/amd64,linux/arm64 \
+  -t ghcr.io/0xabrar/idle-svc:v0.2.0 \
+  --push .
+
+# (optional) update latest tag
+docker buildx build --platform linux/amd64,linux/arm64 \
+  -t ghcr.io/0xabrar/idle-svc:latest \
+  --push .
+```
+
+### Debugging & local testing
+
+Validate the freshly pushed image against a local kind cluster.
+
+```bash
+# create cluster if needed
+kind create cluster --name idle-svc-debug
+kind get clusters
+kubectl cluster-info
+kubectl get nodes
+
+# run the image against kind
+docker run --rm \
+  --network host \
+  --user root \
+  -v ~/.kube/config:/root/.kube/config:ro \
+  ghcr.io/0xabrar/idle-svc:v0.2.0 \
+  -A --json
+```
+
+The distroless image has no shell; to inspect it:
+
+```bash
+# list files
+docker run --rm --entrypoint ls ghcr.io/0xabrar/idle-svc:v0.2.0 -R /
+
+# extract binary
+docker create --name dump ghcr.io/0xabrar/idle-svc:v0.2.0
+docker cp dump:/usr/bin/idle-svc ./idle-svc-debug
+docker rm dump && chmod +x idle-svc-debug
 ```
 
 ---
 
 ## 5. Post-release tasks
 
-* Update `values.yaml` default `image.tag`
+* Bump README examples if they include hard-coded tags

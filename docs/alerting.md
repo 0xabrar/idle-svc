@@ -1,6 +1,6 @@
 # Prometheus Alerting for idle-svc
 
-When you run `idle-svc` with `--listen :9090` (or via the Helm chart), it exposes the following metric:
+When you run `idle-svc` with `--listen :9090`, it exposes the following metric:
 
 ```
 # HELP idle_services_total Number of Services with zero ready endpoints

@@ -23,7 +23,7 @@ These "idle" (or "orphan") Services still hold a ClusterIP and DNS record even t
 
 ## Deployment options
 
-`idle-svc` is packaged four different ways—use whichever fits your workflow.
+`idle-svc` is packaged three different ways—use whichever fits your workflow.
 
 1. **CLI binary**  
    Build with `make build` (or `go install github.com/0xabrar/idle-svc@latest`) and run interactively or in CI:
@@ -45,13 +45,7 @@ These "idle" (or "orphan") Services still hold a ClusterIP and DNS record even t
      ```
      The sidecar continuously scans the cluster and updates the gauge `idle_services_total` without scheduling a separate CronJob.
 
-3. **Helm chart**  
-   One-command install into any cluster.  Creates:
-   * A ServiceAccount + read-only Role/RoleBinding
-   * A CronJob that runs every 15 min (configurable) and emits metrics
-   * An optional Service (port 9090) for scraping
-
-4. **Go library**  
+3. **Go library**  
    Import just the detection logic in another controller/operator:
    ```go
    import "github.com/0xabrar/idle-svc/pkg/orphanfinder"
@@ -60,7 +54,7 @@ These "idle" (or "orphan") Services still hold a ClusterIP and DNS record even t
    if len(orphans) > 0 { /* … */ }
    ```
 
-Pick the lightest option that solves your problem: ad-hoc scans (CLI), continuous monitoring (Helm or sidecar), or embedding (library).
+Pick the lightest option that solves your problem: ad-hoc scans (CLI), continuous monitoring with a Docker sidecar, or embedding (library).
 
 ---
 
@@ -93,33 +87,32 @@ Ensure that `$(go env GOBIN)` (typically `$HOME/go/bin`) is on your `PATH` so yo
 
 ## Container image
 
-A multi-arch (amd64/arm64) image is published on every release:
+A multi-arch (amd64/arm64) image is published on every release: `ghcr.io/0xabrar/idle-svc:<tag>`.
+
+Use it in Kubernetes as a sidecar, or run it manually. For local experiments see below.
+
+### Local Testing
+
+To run the container against a local Kind (or Minikube) cluster on your machine, you need to:
+
+1. **Share your host network** so `127.0.0.1` inside the container reaches the Kind API.  
+2. **Mount your kubeconfig** into the non-root user's home.  
+3. **Run as your UID/GID** so file permissions match.
 
 ```bash
-docker run --rm ghcr.io/0xabrar/idle-svc:latest -A --listen :9090 --watch
+docker run --rm \
+  --network host \
+  --user $(id -u):$(id -g) \
+  -v $HOME/.kube/config:/home/nonroot/.kube/config:ro \
+  ghcr.io/0xabrar/idle-svc:latest \
+  -A --listen :9090 --watch
 ```
 
-The container runs as **non-root** and needs only the Kubernetes config in the pod. When deployed in-cluster use the Helm chart below.
+`--network host` Lets the container see the Kind API at `https://127.0.0.1:<port>`.
 
----
+`--user $(id -u):$(id -g)` Runs the process with your host's UID/GID so it can read your kubeconfig.
 
-## Helm chart
-
-Install the scheduled scan (CronJob) into the `monitoring` namespace:
-
-```bash
-helm repo add idle-svc https://0xabrar.github.io/idle-svc-charts
-helm install idle-svc idle-svc/idle-svc \
-  --namespace monitoring --create-namespace \
-  --set image.tag=$(git describe --tags)
-```
-
-By default the chart:
-- Runs every 15 minutes
-- Scans all namespaces (`-A`)
-- Exposes Prometheus metrics on port 9090
-
-Flags can be overridden via `values.yaml` (`extraArgs`).
+`-v $HOME/.kube/config:/home/nonroot/.kube/config:ro` Mounts your local kubeconfig where the binary expects it.
 
 ---
 
@@ -217,6 +210,6 @@ For everyone else—especially small clusters, developer laptops, or CI pipeline
 
 ## Maintainers
 
-For release instructions (building images, publishing the Helm chart, tagging versions), see [`docs/publishing.md`](docs/publishing.md).
+For release instructions (building images and tagging versions), see [`docs/publishing.md`](docs/publishing.md).
 
 ---

@@ -3,7 +3,7 @@
 BINARY := idle-svc
 PKG := github.com/0xabrar/idle-svc
 
-.PHONY: all build install test lint clean docker helm-chart tidy
+.PHONY: all build install test lint clean docker tidy
 
 all: build
 
@@ -37,11 +37,6 @@ clean:
 docker:
 	@echo "--> building multi-arch docker image"
 	docker build -t idle-svc:latest -f Dockerfile .
-
-helm-chart:
-	@echo "--> packaging helm chart"
-	helm lint chart/idle-svc
-	helm package chart/idle-svc -d ./dist
 
 tidy:
 	go mod tidy 
