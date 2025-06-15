@@ -65,18 +65,6 @@ helm repo add idle-svc https://0xabrar.github.io/idle-svc-charts
 helm install idle-svc idle-svc/idle-svc --version $TAG
 ```
 
-### Option B – OCI registry (Helm 3.8+)
-
-```bash
-helm push dist/idle-svc-$TAG.tgz oci://ghcr.io/0xabrar/charts
-```
-
-End-users then:
-```bash
-helm pull oci://ghcr.io/0xabrar/charts/idle-svc --version $TAG
-helm install idle-svc idle-svc-$TAG.tgz
-```
-
 ---
 
 ## 4. Tag & release the source repository
@@ -126,17 +114,16 @@ jobs:
       - run: |
           TAG=${GITHUB_REF##*/}
           helm package chart/idle-svc -d dist --version $TAG --app-version $TAG
-          helm push dist/idle-svc-$TAG.tgz oci://ghcr.io/0xabrar/charts
+          git clone --depth 1 --branch gh-pages https://github.com/0xabrar/idle-svc.git gh-pages
+          mv dist/idle-svc-$TAG.tgz gh-pages/
+          cd gh-pages
+          helm repo index . --url https://0xabrar.github.io/idle-svc-charts --merge index.yaml
+          git config user.email "actions@github.com" && git config user.name "github-actions"
+          git add . && git commit -m "Add chart $TAG" && git push origin gh-pages
 ```
 
 ---
 
 ## 5. Post-release tasks
 
-* Update `values.yaml` default `image.tag` to the new version for the next development cycle.  
-* Open a PR to bump README examples if they include hard-coded tags.
-* If using gh-pages, confirm the updated `index.yaml` is accessible.
-
----
-
-That's it—your image and chart are now publicly installable. 🎉 
+* Update `values.yaml` default `image.tag`
