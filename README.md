@@ -6,7 +6,7 @@
 
 It deliberately does a **single job**—flagging "idle" (or "orphan") Services that still claim a ClusterIP/DNS record even though no Pods back them.
 
-> **Heads-up:** If your clusters already run Prometheus _and_ kube-state-metrics and you're happy maintaining a small PromQL rule, this tool may not add much value.  See the comparison table below for details.
+> **Heads-up:** If your clusters already run Prometheus _and_ kube-state-metrics, this tool may not add much value.  See the comparison table below for details.
 
 These "idle" (or "orphan") Services still hold a ClusterIP and DNS record even though no Pods back them.
 
